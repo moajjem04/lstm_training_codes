@@ -61,9 +61,9 @@ class MLPClassifier(nn.Module):
     def _block(self, in_channels, out_channels):
         return nn.Sequential(
             nn.Linear(in_channels, out_channels),
-            nn.BatchNorm1d(out_channels),
+            nn.BatchNorm1d(out_channels),            
+            nn.ReLU(),
             nn.Dropout(self.dropout),
-            nn.ReLU()
         )
     def forward(self, x1, x2):
         # for x1
@@ -84,6 +84,7 @@ class MLPClassifier(nn.Module):
         out = self.fc4(x)
         #out = self.relu(out)
         out = self.dropout_layer(out)
+        out = nn.Softmax(dim=1)(out)
         return out
 
 
