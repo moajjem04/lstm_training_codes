@@ -94,10 +94,10 @@ class CNNClassifier(nn.Module):
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         # ch = 2
-        cnn = [self._cnn_block(in_ch * 2**(i+1), in_ch * 2**(i+2), 3, padding= 'same', dropout=dropout) for i in range(num_layers)]
-        cnn = nn.ModuleList(cnn) # convert to nn.ModuleList
+        cnn = [self._cnn_block(in_ch * 2**(i), in_ch * 2**(i+1), 3, padding= 'same', dropout=dropout) for i in range(num_layers)]
+        #cnn = nn.ModuleList(cnn) # convert to nn.ModuleList
         self.cnn = nn.Sequential(*cnn) # convert to a sequential graph
-        # self.cnn = self._cnn_block(ch, ch, 3, padding= 'same')
+        #self.cnn = self._cnn_block(in_ch, in_ch *2, 3, padding= 'same')
         # num_layers = 1
         self.flatten = nn.Flatten()
         self.final_dimension =  in_ch * length # (in_ch * 2** num_layers) * (length//2**num_layers) = in_ch * length
@@ -119,6 +119,7 @@ class CNNClassifier(nn.Module):
     def forward(self, x1, x2):
         # concat x1 and x2 along axis =1
         x = torch.cat((x1, x2), axis=1)
+        #print(x.shape)
         out = self.cnn(x)
         out = self.flatten(out)
         #print(out.shape)
