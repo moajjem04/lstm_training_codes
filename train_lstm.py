@@ -289,7 +289,9 @@ def train_lstm(CONFIG: dict):
     VERBOSE = CONFIG["VERBOSE"]
 
     ## model params
-    INPUT_SIZE = CONFIG["INPUT_SIZE"]
+    MODEL = CONFIG["MODEL"]
+    LENGTH = CONFIG["LENGTH"]
+    IN_CH = CONFIG["IN_CH"]
     OUTPUT_SIZE = CONFIG["OUTPUT_SIZE"]
     HIDDEN_SIZE = CONFIG["HIDDEN_SIZE"]
     NUM_LAYERS = CONFIG["NUM_LAYERS"]
@@ -311,11 +313,17 @@ def train_lstm(CONFIG: dict):
     train_participant_list = participant_list[:20]
     val_participant_list = participant_list[20:25]
     test_participant_list = participant_list[25:]
+    if VERBOSE:
+        print(f"Subjects in train set: {train_participant_list}")
+        print(f"Subjects in val set: {val_participant_list}")
+        print(f"Subjects in test set: {test_participant_list}")
+    
     # load data
     if OUTPUT_SIZE > 2:
         BINARY = False
     else:
         BINARY = True
+
     train_data = load_mat_data(root_dir, participant_list=train_participant_list, binary = BINARY)
     val_data = load_mat_data(root_dir, participant_list=val_participant_list, binary = BINARY)
     test_data = load_mat_data(root_dir, participant_list=test_participant_list, binary = BINARY)
@@ -340,13 +348,18 @@ def train_lstm(CONFIG: dict):
         test_ds, batch_size=BS, shuffle=False, pin_memory=True, num_workers=0
     )
     # setup model
-    model = LSTMClassifier(
-        INPUT_SIZE, HIDDEN_SIZE, num_layers=NUM_LAYERS, output_size=OUTPUT_SIZE, dropout=DROPOUT
-    )
-    # model = CNNClassifier(INPUT_SIZE, HIDDEN_SIZE, num_layers=NUM_LAYERS, output_size=OUTPUT_SIZE)
-    model = MLPClassifier(
-        INPUT_SIZE, HIDDEN_SIZE, num_layers=NUM_LAYERS, output_size=OUTPUT_SIZE, dropout=DROPOUT
-    )
+    if MODEL == "LSTM":
+        model = LSTMClassifier(
+            LENGTH, IN_CH, HIDDEN_SIZE, num_layers=NUM_LAYERS, output_size=OUTPUT_SIZE, bidirectional=False, dropout=DROPOUT
+        )
+    elif MODEL == "MLP":
+        model = MLPClassifier(
+            LENGTH, IN_CH, HIDDEN_SIZE, num_layers=NUM_LAYERS, output_size=OUTPUT_SIZE
+        )
+    elif MODEL == "CNN":
+        model = CNNClassifier(
+            LENGTH, IN_CH, HIDDEN_SIZE, num_layers=NUM_LAYERS, output_size=OUTPUT_SIZE, dropout=DROPOUT
+        )
     opt = torch.optim.Adam(model.parameters(), lr=LR)
     #criterion = nn.BCELoss()
     criterion = nn.CrossEntropyLoss()
@@ -364,90 +377,117 @@ def train_lstm(CONFIG: dict):
     return acc, f1
 
 if __name__ == "__main__":
-    # CONFIG
-    ## folders
     t = 4
-    root_dir = f"C:\\UofL - MSI\\DARPA\\mat_data\\user_wise_{t}s"
-    #root_dir = "C:\\UofL - MSI\\DARPA\\mat_data\\both_pup_user_wise"
-    save_dir = f"C:\\UofL - MSI\\DARPA\\codes\\experiments\\EXP_CNN_{t}s"
-    SEED = 123
-    VERBOSE = True
-    ## model params
-    # INPUT_SIZE = 120 # bvp, gsr not 64, for lstm it is 2
-    LENGTH = 64*t
-    IN_CH = 2
-    OUTPUT_SIZE = 5
-    HIDDEN_SIZE = 64
-    NUM_LAYERS = 4
-    # training params
-    RESUME = False
-    EPOCHS = 1000
-    ES_PATIENCE = 100
-    PRINT_EVERY = 100
-    BS = 1024
-    LR = 1e-4
-    DROPOUT = 0.0
+    model = "CNN"
+    main_config = {}
+    main_config["root_dir"] = f"C:\\UofL - MSI\\DARPA\\mat_data\\user_wise_{t}s"
+    main_config["save_dir"] = f"C:\\UofL - MSI\\DARPA\\Experiments\\EXP_{model}_{t}s"
+    main_config["SEED"] = 123
+    main_config["VERBOSE"] = True
+    main_config["RESUME"] = False
+    main_config["LENGTH"] = 64 * t
+    main_config["IN_CH"] = 2
+    main_config["OUTPUT_SIZE"] = 5
+    main_config["EPOCHS"] = 100
+    main_config["ES_PATIENCE"] = 50
+    main_config["PRINT_EVERY"] = 10
+    main_config["BS"] = 1024
 
-    # Shuffle participants
-    seed_everything(SEED)
-    rng = np.random.default_rng(SEED)
-    participant_list = list(range(1, 31))
-    rng.shuffle(participant_list)
-    #print(participant_list[:20], participant_list[20:25], participant_list[25:])
-    train_participant_list = participant_list[:20]
-    val_participant_list = participant_list[20:25]
-    test_participant_list = participant_list[25:]
-    # load data
-    if OUTPUT_SIZE > 2:
-        BINARY = False
-    else:
-        BINARY = True
-    train_data = load_mat_data(root_dir, participant_list=train_participant_list, binary = BINARY)
-    val_data = load_mat_data(root_dir, participant_list=val_participant_list, binary = BINARY)
-    test_data = load_mat_data(root_dir, participant_list=test_participant_list, binary = BINARY)
+    main_config["MODEL"] = model
+    main_config["HIDDEN_SIZE"] = 64
+    main_config["NUM_LAYERS"] = 4
+    main_config["LR"] = 1e-4
+    main_config["DROPOUT"] = 0.0
 
-    # create dataset
-    train_ds = LSTM_Dataset(train_data[0], train_data[1], train_data[2])
-    val_ds = LSTM_Dataset(val_data[0], val_data[1], val_data[2])
-    test_ds = LSTM_Dataset(test_data[0], test_data[1], test_data[2])
-    # create dataloader
-    train_data = DataLoader(
-        train_ds,
-        batch_size=BS,
-        shuffle=True,
-        pin_memory=True,
-        num_workers=0,
-        drop_last=True,
-    )
-    val_data = DataLoader(
-        val_ds, batch_size=BS, shuffle=False, pin_memory=True, num_workers=0
-    )
-    test_data = DataLoader(
-        test_ds, batch_size=BS, shuffle=False, pin_memory=True, num_workers=0
-    )
-    # setup model
-    model = LSTMClassifier(
-        LENGTH, IN_CH, HIDDEN_SIZE, num_layers=NUM_LAYERS, output_size=OUTPUT_SIZE, bidirectional=False, dropout=DROPOUT
-    )
-    # model = MLPClassifier(
-    #     INPUT_SIZE, HIDDEN_SIZE, num_layers=NUM_LAYERS, output_size=OUTPUT_SIZE
-    # )
-    model = LSTMClassifier(
-        LENGTH, IN_CH, HIDDEN_SIZE, num_layers=NUM_LAYERS, output_size=OUTPUT_SIZE, dropout=DROPOUT
-    )
+    # train
+    _ = train_lstm(main_config)
 
 
-    opt = torch.optim.Adam(model.parameters(), lr=LR)
-    #criterion = nn.BCELoss()
-    criterion = nn.CrossEntropyLoss()
-    # train model
-    trainer = Trainer(model, criterion, opt, save_dir=save_dir, es_patience=ES_PATIENCE, output_size=OUTPUT_SIZE, verbose=VERBOSE)
-    trainer.train(
-        train_data,
-        val_data,
-        test_data,
-        epochs=EPOCHS,
-        print_every=PRINT_EVERY,
-        resume=RESUME,
-    )
-    trainer.inference(test_data)
+# if __name__ == "__main__":
+#     # CONFIG
+#     ## folders
+#     t = 4
+#     root_dir = f"C:\\UofL - MSI\\DARPA\\mat_data\\user_wise_{t}s"
+#     #root_dir = "C:\\UofL - MSI\\DARPA\\mat_data\\both_pup_user_wise"
+#     save_dir = f"C:\\UofL - MSI\\DARPA\\Experiments\\EXP_CNN_{t}s"
+#     SEED = 123
+#     VERBOSE = True
+#     ## model params
+#     # INPUT_SIZE = 120 # bvp, gsr not 64, for lstm it is 2
+#     LENGTH = 64*t
+#     IN_CH = 2
+#     OUTPUT_SIZE = 5
+#     HIDDEN_SIZE = 64
+#     NUM_LAYERS = 4
+#     # training params
+#     RESUME = False
+#     EPOCHS = 1000
+#     ES_PATIENCE = 100
+#     PRINT_EVERY = 100
+#     BS = 1024
+#     LR = 1e-4
+#     DROPOUT = 0.0
+
+#     # Shuffle participants
+#     seed_everything(SEED)
+#     rng = np.random.default_rng(SEED)
+#     participant_list = list(range(1, 31))
+#     rng.shuffle(participant_list)
+#     #print(participant_list[:20], participant_list[20:25], participant_list[25:])
+#     train_participant_list = participant_list[:20]
+#     val_participant_list = participant_list[20:25]
+#     test_participant_list = participant_list[25:]
+#     # load data
+#     if OUTPUT_SIZE > 2:
+#         BINARY = False
+#     else:
+#         BINARY = True
+#     train_data = load_mat_data(root_dir, participant_list=train_participant_list, binary = BINARY)
+#     val_data = load_mat_data(root_dir, participant_list=val_participant_list, binary = BINARY)
+#     test_data = load_mat_data(root_dir, participant_list=test_participant_list, binary = BINARY)
+
+#     # create dataset
+#     train_ds = LSTM_Dataset(train_data[0], train_data[1], train_data[2])
+#     val_ds = LSTM_Dataset(val_data[0], val_data[1], val_data[2])
+#     test_ds = LSTM_Dataset(test_data[0], test_data[1], test_data[2])
+#     # create dataloader
+#     train_data = DataLoader(
+#         train_ds,
+#         batch_size=BS,
+#         shuffle=True,
+#         pin_memory=True,
+#         num_workers=0,
+#         drop_last=True,
+#     )
+#     val_data = DataLoader(
+#         val_ds, batch_size=BS, shuffle=False, pin_memory=True, num_workers=0
+#     )
+#     test_data = DataLoader(
+#         test_ds, batch_size=BS, shuffle=False, pin_memory=True, num_workers=0
+#     )
+#     # setup model
+#     model = LSTMClassifier(
+#         LENGTH, IN_CH, HIDDEN_SIZE, num_layers=NUM_LAYERS, output_size=OUTPUT_SIZE, bidirectional=False, dropout=DROPOUT
+#     )
+#     # model = MLPClassifier(
+#     #     INPUT_SIZE, HIDDEN_SIZE, num_layers=NUM_LAYERS, output_size=OUTPUT_SIZE
+#     # )
+#     model = LSTMClassifier(
+#         LENGTH, IN_CH, HIDDEN_SIZE, num_layers=NUM_LAYERS, output_size=OUTPUT_SIZE, dropout=DROPOUT
+#     )
+
+
+#     opt = torch.optim.Adam(model.parameters(), lr=LR)
+#     #criterion = nn.BCELoss()
+#     criterion = nn.CrossEntropyLoss()
+#     # train model
+#     trainer = Trainer(model, criterion, opt, save_dir=save_dir, es_patience=ES_PATIENCE, output_size=OUTPUT_SIZE, verbose=VERBOSE)
+#     trainer.train(
+#         train_data,
+#         val_data,
+#         test_data,
+#         epochs=EPOCHS,
+#         print_every=PRINT_EVERY,
+#         resume=RESUME,
+#     )
+#     trainer.inference(test_data)
