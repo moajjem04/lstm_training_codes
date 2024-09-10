@@ -35,7 +35,7 @@ class LSTMClassifier(nn.Module):
         return out
 
 class MLPClassifier(nn.Module):
-    def __init__(self, input_size=64, hidden_size=64, num_layers=2, output_size=1, dropout=0.3):
+    def __init__(self, length, in_ch, hidden_size=64, num_layers=2, output_size=1, dropout=0.3, bidirectional=False):
         super().__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
@@ -43,17 +43,17 @@ class MLPClassifier(nn.Module):
 
         # layers
         self.flat1 = nn.Flatten()
-        self.bn1 = nn.BatchNorm1d(input_size)
-        self.fc1 = nn.ModuleList([self._block(input_size, input_size) for _ in range(num_layers)])
+        self.bn1 = nn.BatchNorm1d(length)
+        self.fc1 = nn.ModuleList([self._block(length, length) for _ in range(num_layers)])
         self.fc1 = nn.Sequential(*self.fc1)
 
         self.flat2 = nn.Flatten()
-        self.bn2 = nn.BatchNorm1d(input_size)
-        self.fc2 = nn.ModuleList([self._block(input_size, input_size) for _ in range(num_layers)])
+        self.bn2 = nn.BatchNorm1d(length)
+        self.fc2 = nn.ModuleList([self._block(length, length) for _ in range(num_layers)])
         self.fc2 = nn.Sequential(*self.fc2)
 
         self.flatten = nn.Flatten()
-        self.fc3 = self._block(2 * input_size, self.hidden_size)
+        self.fc3 = self._block(2 * length, self.hidden_size)
         self.fc4 = nn.Linear(self.hidden_size, output_size)
 
         self.dropout_layer = nn.Dropout(dropout)    
