@@ -50,7 +50,7 @@ if __name__ == "__main__":
             result_dict[key].append(g[key])
         result_dict['acc'].append(acc)
         result_dict['f1'].append(f1)
-        print(f"Exp {i} - {g} - Acc: {acc} - F1: {f1}")
+        print(f"Exp {i} - {g} - Acc: {acc:.4f} - F1: {f1:.4f}")
         # if i == 10: 
         #     break
     

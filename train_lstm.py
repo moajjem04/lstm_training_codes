@@ -218,7 +218,7 @@ class Trainer:
                     progress.update(task2, advance=1)
 
         # Generate classification report and confusion matrix
-        class_report = classification_report(true_list, pred_list, digits=4)
+        class_report = classification_report(true_list, pred_list, digits=4, zero_division= 0.0)
         conf_matrix = confusion_matrix(true_list, pred_list)
 
         # Open a .txt file and write the results
